@@ -20,5 +20,9 @@ datasets
 *.vcxproj
 *.filters
 *.sdf
-*.slnext/eigen/
+*.sln
+ext/eigen/
 build/
+build_macos/
+release/
+addon.zip
