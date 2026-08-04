@@ -48,25 +48,35 @@ jobs:
         shell: bash
         run: |
           mkdir -p release
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            cp build/Release/instantmeshes-cli.exe "release/${{ matrix.artifact }}"
-          else
-            cp build/instantmeshes-cli "release/${{ matrix.artifact }}"
-          fi
+          cp build/instantmeshes-cli "release/${{ matrix.artifact }}"
+        if: runner.os != 'Windows'
+
+      - name: Rename artifact (Windows)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release
+          Copy-Item build/Release/instantmeshes-cli.exe "release/${{ matrix.artifact }}"
 
       - name: Package Blender addon
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           ADDON_TMP=$(mktemp -d)
           mkdir -p "$ADDON_TMP/instant_meshes/bin"
           cp instant_meshes/*.py "$ADDON_TMP/instant_meshes/"
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            cp build/Release/instantmeshes-cli.exe "$ADDON_TMP/instant_meshes/bin/instantmeshes-cli.exe"
-          else
-            cp build/instantmeshes-cli "$ADDON_TMP/instant_meshes/bin/instantmeshes-cli"
-            chmod +x "$ADDON_TMP/instant_meshes/bin/instantmeshes-cli"
-          fi
+          cp build/instantmeshes-cli "$ADDON_TMP/instant_meshes/bin/instantmeshes-cli"
+          chmod +x "$ADDON_TMP/instant_meshes/bin/instantmeshes-cli"
           (cd "$ADDON_TMP" && zip -r "$OLDPWD/release/${{ matrix.addon }}" instant_meshes/)
+
+      - name: Package Blender addon (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ADDON_TMP = Join-Path $env:RUNNER_TEMP "im_addon"
+          New-Item -ItemType Directory -Force -Path "$ADDON_TMP/instant_meshes/bin"
+          Copy-Item instant_meshes/*.py "$ADDON_TMP/instant_meshes/"
+          Copy-Item build/Release/instantmeshes-cli.exe "$ADDON_TMP/instant_meshes/bin/instantmeshes-cli.exe"
+          Compress-Archive -Path "$ADDON_TMP/instant_meshes" -DestinationPath "release/${{ matrix.addon }}" -Force
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
