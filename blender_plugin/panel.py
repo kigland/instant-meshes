@@ -71,18 +71,17 @@ class IM_PT_Main(Panel):
             layout.label(text="CLI not found — check Preferences", icon='ERROR')
 
 
-# Registrable property group (stored per .blend)
-def _density_items(self, context):
-    return [
-        ('FACES', "Face Count", ""),
-        ('SCALE', "Edge Length", ""),
-        ('VERTICES', "Vertex Count", ""),
-    ]
+# Static density options
+_DENSITY_ITEMS = [
+    ('FACES', "Face Count", "Target number of output faces"),
+    ('SCALE', "Edge Length", "Target edge length"),
+    ('VERTICES', "Vertex Count", "Target number of output vertices"),
+]
 
 
 def register():
     bpy.types.Scene.im_density_mode = EnumProperty(
-        name="Density", items=_density_items, default='FACES')
+        name="Density", items=_DENSITY_ITEMS, default='FACES')
     bpy.types.Scene.im_target_faces = IntProperty(name="Faces", default=2000, min=4)
     bpy.types.Scene.im_target_scale = FloatProperty(name="Scale", default=-1.0)
     bpy.types.Scene.im_target_vertices = IntProperty(name="Vertices", default=-1, min=4)
