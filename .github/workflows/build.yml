@@ -38,20 +38,21 @@ jobs:
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM="3.5" ${{ matrix.cmake_extra }}
 
       - name: Build
-        run: cmake --build build --target instantmeshes-cli --config Release -j ${{ runner.os == 'Windows' && '' || '$(nproc)' }}
+        run: cmake --build build --target instantmeshes-cli --config Release ${{ (runner.os == 'Linux' || runner.os == 'macOS') && '--parallel' || '' }}
 
       - name: Strip (non-Windows)
         if: runner.os != 'Windows'
         run: strip build/instantmeshes-cli
 
       - name: Rename artifact
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           mkdir -p release
           cp build/instantmeshes-cli "release/${{ matrix.artifact }}"
-        if: runner.os != 'Windows'
 
       - name: Rename artifact (Windows)
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path release
