@@ -21,13 +21,19 @@ def _ensure_bundled_binary_is_executable(path):
 
 
 def _bundled_binary_path(addon_dir):
-    machine = platform.machine().lower()
-    if sys.platform == 'darwin' and machine in {'arm64', 'aarch64'}:
-        return os.path.join(
-            addon_dir,
-            "bin",
-            "instantmeshes-cli-macos-arm64",
-        )
+    # Look for platform-specific binary in addon's bin/ folder
+    bin_dir = os.path.join(addon_dir, "bin")
+    if not os.path.isdir(bin_dir):
+        return None
+
+    if os.name == 'nt':
+        exe = os.path.join(bin_dir, "instantmeshes-cli.exe")
+        return exe if os.path.isfile(exe) else None
+    else:
+        exe = os.path.join(bin_dir, "instantmeshes-cli")
+        if os.path.isfile(exe):
+            _ensure_bundled_binary_is_executable(exe)
+            return exe
     return None
 
 
