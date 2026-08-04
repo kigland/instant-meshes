@@ -16,3 +16,6 @@
 [submodule "ext/imgui"]
 	path = ext/imgui
 	url = https://github.com/ocornut/imgui
+[submodule "ext/cgltf"]
+	path = ext/cgltf
+	url = https://github.com/jkuhlmann/cgltf

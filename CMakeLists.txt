@@ -328,3 +328,31 @@ set_target_properties(InstantMeshesImgui PROPERTIES
 set_target_properties(InstantMeshesImgui PROPERTIES
   RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/im.icns"
 )
+
+# ============================================================
+# CLI tool — supports OBJ, PLY, GLB, glTF
+# ============================================================
+
+add_executable(instantmeshes-cli
+  src/cli/main.cpp
+)
+target_include_directories(instantmeshes-cli PRIVATE
+  ${CORE_INCLUDE_DIRS}
+  ext/cgltf
+)
+target_link_libraries(instantmeshes-cli
+  instantmeshes_core
+  tbb_static
+)
+target_compile_definitions(instantmeshes-cli PRIVATE
+  __TBB_NO_IMPLICIT_LINKAGE
+)
+target_compile_options(instantmeshes-cli PRIVATE
+  -Wno-deprecated-declarations
+  -Wno-int-in-bool-context
+  -Wno-deprecated-copy
+  -Wno-unused-parameter
+)
+if(APPLE)
+  set_target_properties(instantmeshes-cli PROPERTIES CXX_STANDARD 14)
+endif()
