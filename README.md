@@ -52,7 +52,7 @@ automatically, so no binary path setup is required on this platform.
 | `-v, --vertices` | Target vertex count | auto |
 | `-r, --rosy` | Rotational symmetry `2` `4` `6` | `4` |
 | `-p, --posy` | Positional symmetry `3` `4` | `4` |
-| `-c, --crease` | Crease angle threshold (degrees) | `-1` auto |
+| `-c, --crease` | Crease angle threshold (degrees) | `-1` disables explicit creases |
 | `-i, --intrinsic` | Intrinsic mode | off |
 | `-b, --boundaries` | Align to boundaries | off |
 | `-D, --dominant` | Non-pure-quad output | off |
@@ -62,59 +62,80 @@ automatically, so no binary path setup is required on this platform.
 | `-t, --threads` | Thread count | auto |
 | `-h, --help` | Show help | — |
 
-## Blender 插件
+## Blender Addon
 
-在 Blender 的 **Edit > Preferences > Add-ons > Install from Disk** 中安装
-`instant-meshes-blender-addon.zip`，然后打开
-**3D Viewport > Sidebar (N) > Instant Meshes**。
+Install `instant-meshes-blender-addon.zip` from Blender's
+**Edit > Preferences > Add-ons > Install from Disk**, then open
+**3D Viewport > Sidebar (N) > Instant Meshes**.
 
-**Advanced** 默认是折叠的。点击左侧展开箭头后，才会显示 Extrinsic、Crease
-Angle、Align Boundaries、Quad-Dominant、Smooth Iterations、Deterministic 和
-Threads。鼠标停留在 Blender 的任意参数上，也可以看到对应的悬停说明。
+The **Advanced** section is collapsed by default. Expand it to access
+Extrinsic, Crease Angle, Align Boundaries, Quad-Dominant, Smooth Iterations,
+Deterministic, and Threads. The addon also includes a collapsible bilingual
+**Parameter Guide** section with both English and Chinese help.
 
-### UI 参数说明
+### Original UI-Aligned Defaults
 
-Density 的三个模式互斥：每次只会向 CLI 传递 `--faces`、`--scale` 或
-`--vertices` 其中一个。三个目标值都是近似值，因为最终拓扑还需要同时满足方向场、
-位置场和网格提取约束。
+The Blender addon defaults intentionally match the effective defaults of the
+original 2015 Instant Meshes GUI, rather than the later batch-mode defaults.
 
-| UI 参数 | CLI | 默认值 | 参数作用 | 使用建议 |
-|---------|-----|--------|----------|----------|
-| **Density > Face Count** | `-f` | `2000` | 目标输出面数 | 最通用的密度控制方式。提高数值可以保留更多小细节，但计算时间和输出规模也会增加。 |
-| **Density > Edge Length** | `-s` | `-1` | 目标边长，单位与导出的 OBJ 一致 | 适合需要统一物理网格尺度的多个模型。`-1` 表示由 CLI 自动决定。 |
-| **Density > Vertex Count** | `-v` | `-1` | 目标输出顶点数 | 适合后续流程有顶点预算时使用。`-1` 表示由 CLI 自动决定。 |
-| **RoSy** | `-r` | `4` | 方向场的旋转对称阶数 | 普通四边形重拓扑使用 `4`。有效值为 `2`、`4`、`6`。 |
-| **PoSy** | `-p` | `4` | 位置场的平移/位置对称类型 | 四边形使用 `4`；三角形或六边形倾向的布局使用 `3`。 |
-| **Extrinsic** | 关闭时传 `-i` | 开 | 使用模型在三维空间中的嵌入关系进行优化 | 通常保持开启。模型折叠严重或希望按曲面内部距离计算时可关闭，切换为 Intrinsic。 |
-| **Crease Angle** | `-c` | `-1` | 用于识别和对齐锐边的二面角阈值，单位为度 | `-1` 为自动处理。硬表面模型可从 `30`-`60` 度开始尝试。数值越小，越多边会被视为锐边。 |
-| **Align Boundaries** | `-b` | 关 | 让方向场沿开放边界排列 | 开放网格且边界走向重要时开启；对完全封闭的网格基本没有作用。 |
-| **Quad-Dominant** | `-D` | 关 | 允许在困难区域生成少量非四边形面 | 当稳定生成结果比纯四边形更重要时开启。关闭时更倾向纯四边形输出。 |
-| **Smooth Iterations** | `-S` | `2` | 网格提取前对方向场进行平滑的次数 | 增大后拓扑流向更规整，但可能削弱局部特征对齐，并增加计算时间。通常使用 `2`-`4`。 |
-| **Deterministic** | `-d` | 关 | 使用确定性处理，使相同输入更容易得到一致结果 | 自动化测试、批处理和结果复现时开启；可能降低速度。 |
-| **Threads** | `-t` | `0` | 最大工作线程数 | `0` 表示由 CLI 自动选择。设置正整数可以限制 CPU 占用。 |
+| Setting | Blender addon default | Original GUI behavior |
+|---------|-------------------------|-----------------------|
+| Density mode | Vertex Count | The original GUI exposed Target Vertex Count |
+| Vertex Count | `-1` | Automatically targets about `1/16` of the input vertices |
+| RoSy / PoSy | `4 / 4` | Standard quad remeshing |
+| Extrinsic | on | Enabled |
+| Crease Angle | `-1` | Sharp creases disabled |
+| Align Boundaries | off | Disabled |
+| Quad-Dominant | on | Equivalent to original `Pure quad mesh = off` |
+| Smooth Iterations | `0` | No post-extraction smoothing by default |
+| Deterministic | off | Disabled |
+| Threads | `0` | Automatic thread count |
 
-### RoSy 与 PoSy 组合解读
+### UI Parameter Guide
 
-| RoSy | PoSy | 常见结果 |
-|------|------|----------|
-| `4` | `4` | 标准四边形重拓扑，推荐默认组合 |
-| `6` | `3` | 偏向三角形/六边形的布局 |
-| `2` | `4` | 双向方向场，适合特殊的方向性布局，不是常规四边形首选 |
+The three Density modes are mutually exclusive. Exactly one of `--faces`,
+`--scale`, or `--vertices` is sent to the CLI. All targets are approximate
+because the output must also satisfy field-alignment and extraction constraints.
 
-### 推荐参数组合
+| UI control | CLI | Default | What it controls | Practical guidance |
+|------------|-----|---------|------------------|--------------------|
+| **Density > Face Count** | `-f` | `2000` when selected | Approximate output face count | Increase it to retain smaller details, at the cost of a larger result and more processing. |
+| **Density > Edge Length** | `-s` | `-1` | Target edge length in exported OBJ units | Useful when several meshes need a shared physical edge scale. `-1` uses automatic sizing. |
+| **Density > Vertex Count** | `-v` | `-1` (default mode) | Approximate output vertex count | `-1` reproduces the original GUI target of about `1/16` of the input vertices. |
+| **RoSy** | `-r` | `4` | Rotational symmetry of the orientation field | Use `4` for standard quad remeshing. Valid values are `2`, `4`, and `6`. |
+| **PoSy** | `-p` | `4` | Symmetry of the position field | Use `4` for quads or `3` for triangle/hexagon-oriented layouts. |
+| **Extrinsic** | inverse of `-i` | on | Uses the mesh's 3D embedding during optimization | Usually keep it enabled. Disable it to use intrinsic surface distances. |
+| **Crease Angle** | `-c` | `-1` | Sharp-edge dihedral threshold in degrees | Keep `-1` to disable explicit crease constraints. Try `30`-`60` degrees for hard-surface meshes. |
+| **Align Boundaries** | `-b` | off | Aligns the field to open mesh borders | Enable it when the direction of open borders matters. It has little effect on closed meshes. |
+| **Quad-Dominant** | `-D` | on | Allows non-quads in difficult regions | This matches the original GUI. Disable it when a pure-quad result is more important. |
+| **Smooth Iterations** | `-S` | `0` | Post-extraction smoothing and reprojection steps | Increase it when a more uniform result is worth some loss of local feature alignment. |
+| **Deterministic** | `-d` | off | Makes repeated runs more reproducible | Useful for tests and batch pipelines, with a possible performance cost. |
+| **Threads** | `-t` | `0` | Maximum worker thread count | Keep `0` for automatic selection or use a positive value to limit CPU use. |
 
-| 目标 | 推荐设置 |
-|------|----------|
-| 通用四边形重拓扑 | 按需求设置 Face Count，RoSy `4`，PoSy `4`，Extrinsic 开，Smooth `2` |
-| 硬表面和锐边 | RoSy `4`，PoSy `4`，Crease Angle `30`-`60`；开放网格可开启 Align Boundaries |
-| 有机曲面 | RoSy `4`，PoSy `4`，Crease Angle `-1`，Smooth `2`-`4` |
-| 优先稳定生成 | 开启 Quad-Dominant，允许困难区域出现少量非四边形面 |
-| 需要复现结果 | 开启 Deterministic，并设置固定的正整数 Threads |
+### RoSy and PoSy Combinations
 
-CLI 还提供 `-k/--knn`，但插件有意不把它放进 UI。KNN 用于点云输入的邻域构建，
-而当前插件只接受 Blender Mesh，并将其导出为 OBJ；因此该参数在现有插件流程中不会
-产生作用。除仅用于命令行帮助的 `-h/--help` 外，UI 已覆盖所有对 Mesh/OBJ 流程有效的
-CLI 参数。
+| RoSy | PoSy | Typical result |
+|------|------|----------------|
+| `4` | `4` | Standard quad remeshing; recommended default |
+| `6` | `3` | Triangle/hexagon-oriented layout |
+| `2` | `4` | Two-way orientation field for specialized directional layouts |
+
+### Suggested Settings
+
+| Goal | Suggested settings |
+|------|--------------------|
+| Original GUI default | Vertex Count `-1`, RoSy `4`, PoSy `4`, Extrinsic on, Quad-Dominant on, Smooth `0` |
+| Higher-density quads | Select Face Count, choose the required budget, and keep RoSy/PoSy at `4/4` |
+| Hard-surface edges | RoSy/PoSy `4/4`, Crease Angle `30`-`60`; enable Align Boundaries for open meshes |
+| Organic surface | RoSy/PoSy `4/4`, Crease Angle `-1`; raise Smooth to `2`-`4` only when needed |
+| Robust extraction | Keep Quad-Dominant enabled to allow a small number of non-quad faces |
+| Repeatable output | Enable Deterministic and use a fixed positive Threads value |
+
+The CLI also exposes `-k/--knn`, but the addon intentionally omits it. KNN
+controls neighborhood construction for point-cloud input, while the addon only
+accepts a Blender Mesh and exports it as OBJ. It has no effect in the current
+addon workflow. Apart from `-h/--help`, the UI exposes every CLI parameter that
+affects the Mesh/OBJ workflow.
 
 ## 🛠️ Build from Source
 
