@@ -169,7 +169,7 @@ void generate_crease_normals(MatrixXu &F, MatrixXf &V, const VectorXu &_V2E,
                              const VectorXb &nonManifold, Float angleThreshold,
                              MatrixXf &N, std::map<uint32_t, uint32_t> &creases,
                              const ProgressCallback &progress) {
-    const Float dpThreshold = std::cos(angleThreshold * M_PI / 180);
+    Float dpThreshold = std::cos(angleThreshold * M_PI / 180);
 
     cout << "Computing vertex & crease normals .. ";
     cout.flush();
@@ -318,7 +318,7 @@ void generate_crease_normals(const MatrixXu &F, const MatrixXf &V,
                              const VectorXb &nonManifold, Float angleThreshold,
                              MatrixXf &N, std::set<uint32_t> &creases,
                              const ProgressCallback &progress) {
-    const Float dpThreshold = std::cos(angleThreshold * M_PI / 180);
+    Float dpThreshold = std::cos(angleThreshold * M_PI / 180);
 
     cout << "Computing vertex & crease normals .. ";
     cout.flush();
