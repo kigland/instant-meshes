@@ -14,12 +14,9 @@ echo "=== Packaging Instant Meshes Blender Addon Release ==="
 # 1. Package just the addon (user installs via Blender Preferences)
 echo "--- Packaging addon ---"
 ADDON_ZIP="$RELEASE_DIR/instant-meshes-blender-addon.zip"
-cd "$PROJECT_ROOT"
-zip -r "$ADDON_ZIP" blender_plugin/ \
-  -x "blender_plugin/build/*" \
-  -x "*.pyc" \
-  -x "*__pycache__*" \
-  -x ".DS_Store"
+cd "$ADDON_DIR"
+zip -r "$ADDON_ZIP" __init__.py operators.py panel.py preferences.py \
+  -x "*.pyc" "*__pycache__*" ".DS_Store"
 echo "  $ADDON_ZIP"
 
 # 2. Build CLI binaries (if available)
