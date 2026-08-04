@@ -14,10 +14,13 @@ endif()
 
 # ---- Dependencies ----
 
+option(USE_SYSTEM_TBB "Use system TBB instead of bundled (for modern Linux)" OFF)
+
 # TBB
-if(NOT IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/ext/tbb")
+if(USE_SYSTEM_TBB OR NOT IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/ext/tbb")
   find_package(TBB REQUIRED)
   set(TBB_LIB TBB::tbb)
+  set(TBB_INCLUDE_DIRS ${TBB_INCLUDE_DIRS})
 else()
   option(TBB_BUILD_STATIC "Build static TBB" ON)
   option(TBB_BUILD_SHARED "Build shared TBB" OFF)
@@ -26,6 +29,7 @@ else()
   option(TBB_BUILD_TESTS "Build TBB tests" OFF)
   add_subdirectory(ext/tbb ext_build/tbb)
   set(TBB_LIB tbb_static)
+  set(TBB_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/tbb/include)
 endif()
 
 # Eigen (header-only, bundled from ext/half-aware location)
@@ -54,9 +58,13 @@ set(CORE_INCLUDES
   ${CMAKE_CURRENT_SOURCE_DIR}/ext/pss
   ${CMAKE_CURRENT_SOURCE_DIR}/ext/rply
   ${CMAKE_CURRENT_SOURCE_DIR}/ext/eigen
-  ${CMAKE_CURRENT_SOURCE_DIR}/ext/tbb/include
+  ${TBB_INCLUDE_DIRS}
   ${CMAKE_CURRENT_SOURCE_DIR}/ext/cgltf
 )
+
+if(USE_SYSTEM_TBB)
+  list(REMOVE_ITEM CORE_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/ext/pss)
+endif()
 
 # ---- Core Algorithm Library ----
 
@@ -82,6 +90,10 @@ add_library(instantmeshes_core STATIC ${CORE_SRCS})
 target_include_directories(instantmeshes_core PUBLIC ${CORE_INCLUDES})
 target_link_libraries(instantmeshes_core PUBLIC ${TBB_LIB})
 target_compile_definitions(instantmeshes_core PRIVATE __TBB_NO_IMPLICIT_LINKAGE)
+
+if(USE_SYSTEM_TBB)
+  target_compile_definitions(instantmeshes_core PRIVATE USE_SYSTEM_TBB=1)
+endif()
 
 if(APPLE)
   target_link_libraries(instantmeshes_core PUBLIC "-framework Foundation")

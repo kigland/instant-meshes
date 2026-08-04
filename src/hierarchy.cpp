@@ -16,7 +16,9 @@
 #include "serializer.h"
 #include "dedge.h"
 #include "field.h"
+#ifndef USE_SYSTEM_TBB
 #include <parallel_stable_sort.h>
+#endif
 #include <pcg32.h>
 
 AdjacencyMatrix downsample_graph(const AdjacencyMatrix adj, const MatrixXf &V,
@@ -60,7 +62,11 @@ AdjacencyMatrix downsample_graph(const AdjacencyMatrix adj, const MatrixXf &V,
         progress("Downsampling graph (2/6)", 0.0f);
 
     if (deterministic)
+#ifndef USE_SYSTEM_TBB
         pss::parallel_stable_sort(entries, entries + nLinks, std::less<Entry>());
+#else
+        tbb::parallel_sort(entries, entries + nLinks, std::less<Entry>());
+#endif
     else
         tbb::parallel_sort(entries, entries + nLinks, std::less<Entry>());
 

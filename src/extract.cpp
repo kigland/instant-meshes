@@ -19,7 +19,9 @@
 #include "bvh.h"
 #include "cleanup.h"
 #include <tbb/concurrent_vector.h>
+#ifndef USE_SYSTEM_TBB
 #include <parallel_stable_sort.h>
+#endif
 #include <unordered_set>
 #include <tuple>
 #include <set>
@@ -181,7 +183,11 @@ extract_graph(const MultiResolutionHierarchy &mRes, bool extrinsic, int rosy, in
         };
 
         if (deterministic)
+#ifndef USE_SYSTEM_TBB
             pss::parallel_stable_sort(collapse_edge_vec.begin(), collapse_edge_vec.end(), WeightedEdgeComparator());
+#else
+            tbb::parallel_sort(collapse_edge_vec.begin(), collapse_edge_vec.end(), WeightedEdgeComparator());
+#endif
         else
             tbb::parallel_sort(collapse_edge_vec.begin(), collapse_edge_vec.end(), WeightedEdgeComparator());
 

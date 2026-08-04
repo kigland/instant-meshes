@@ -16,6 +16,10 @@
 #include "field.h"
 #include "serializer.h"
 
+#if USE_SYSTEM_TBB
+#include <tbb/info.h>
+#endif
+
 static const Float sqrt_3_over_4 = 0.866025403784439f;
 static const uint32_t INVALID = (uint32_t) -1;
 
@@ -1539,7 +1543,12 @@ extern int nprocs;
 void Optimizer::run() {
     const int levelIterations = 6;
     uint32_t operations = 0;
+#if USE_SYSTEM_TBB
+    tbb::global_control gc(tbb::global_control::max_allowed_parallelism,
+                            nprocs > 0 ? (size_t)nprocs : tbb::info::default_concurrency());
+#else
     tbb::task_scheduler_init init(nprocs);
+#endif
 
     auto progress = [&](uint32_t ops) {
         operations += ops;

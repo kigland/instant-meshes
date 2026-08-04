@@ -1,0 +1,97 @@
+name: Build & Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            artifact: instantmeshes-cli-macos-arm64
+            addon: instant-meshes-blender-macos.zip
+            cmake_extra: -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
+          - os: ubuntu-22.04
+            artifact: instantmeshes-cli-linux-x86_64
+            addon: instant-meshes-blender-linux.zip
+            cmake_extra: -DUSE_SYSTEM_TBB=ON
+          - os: windows-latest
+            artifact: instantmeshes-cli-windows-x86_64.exe
+            addon: instant-meshes-blender-windows.zip
+            cmake_extra: -A x64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install deps (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libtbb-dev
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ${{ matrix.cmake_extra }}
+
+      - name: Build
+        run: cmake --build build --target instantmeshes-cli --config Release -j ${{ runner.os == 'Windows' && '' || '$(nproc)' }}
+
+      - name: Strip (non-Windows)
+        if: runner.os != 'Windows'
+        run: strip build/instantmeshes-cli
+
+      - name: Rename artifact
+        shell: bash
+        run: |
+          mkdir -p release
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cp build/Release/instantmeshes-cli.exe "release/${{ matrix.artifact }}"
+          else
+            cp build/instantmeshes-cli "release/${{ matrix.artifact }}"
+          fi
+
+      - name: Package Blender addon
+        shell: bash
+        run: |
+          ADDON_TMP=$(mktemp -d)
+          mkdir -p "$ADDON_TMP/instant_meshes/bin"
+          cp instant_meshes/*.py "$ADDON_TMP/instant_meshes/"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cp build/Release/instantmeshes-cli.exe "$ADDON_TMP/instant_meshes/bin/instantmeshes-cli.exe"
+          else
+            cp build/instantmeshes-cli "$ADDON_TMP/instant_meshes/bin/instantmeshes-cli"
+            chmod +x "$ADDON_TMP/instant_meshes/bin/instantmeshes-cli"
+          fi
+          (cd "$ADDON_TMP" && zip -r "$OLDPWD/release/${{ matrix.addon }}" instant_meshes/)
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}-build
+          path: release/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '*-build'
+          merge-multiple: true
+          path: release/
+
+      - name: Create Release
+        run: |
+          gh release create ${{ github.ref_name }} \
+            release/* \
+            --title "Instant Meshes ${{ github.ref_name }}" \
+            --generate-notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
