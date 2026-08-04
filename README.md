@@ -1,8 +1,8 @@
 # ✨ Instant Meshes CLI
 
-> 🏗️ 一键自动重拓扑 · 干净 · 快速 · 可爱
+> 🏗️ One-command auto retopology · clean · fast · cute
 
-基于 SIGGRAPH Asia 2015 论文 [**Instant Field-Aligned Meshes**](http://igl.ethz.ch/projects/instant-meshes/) 的命令行版本，去掉了 GUI，保留核心算法，支持 GLB / glTF / OBJ / PLY。
+A command-line wrapper around the [**Instant Field-Aligned Meshes**](http://igl.ethz.ch/projects/instant-meshes/) algorithm (SIGGRAPH Asia 2015). Supports GLB, glTF, OBJ, and PLY inputs. No GUI — just pure remeshing power.
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS_ARM64-pink?style=flat-square" alt="macOS ARM64">
@@ -12,78 +12,78 @@
 
 ---
 
-## 🎀 这是什么
+## 🎀 What is this?
 
-把乱七八糟的高面数三角网格，变成干净整齐的四边面（或三角面），并且保持原有形状。俗称**重拓扑**。
+Turns messy, high-poly triangle meshes into clean, well-structured quad (or tri) meshes — while preserving the original shape. This is called **retopology** (or **remeshing**).
 
 ```
-    🪨 输入 (50,000 三角面)  ──→  🧊 输出 (2,000 四边面)
+    🪨 Input (50K triangles)  ──→  🧊 Output (2K quads)
 ```
 
-## 📦 下载
+## 📦 Download
 
-[![Download](https://img.shields.io/badge/⬇️%20下载-macOS_ARM64-f5a?style=for-the-badge)](https://github.com/kigland/instant-meshes/releases/latest)
+[![Download](https://img.shields.io/badge/⬇️%20Download-macOS_ARM64-f5a?style=for-the-badge)](https://github.com/kigland/instant-meshes/releases/latest)
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
 ```bash
-# 基本用法：输入 GLB，输出 OBJ，2000 面
+# Basic: GLB in, OBJ out, 2000 faces
 ./instantmeshes-cli model.glb output.obj -f 2000
 
-# 高精度
+# High resolution
 ./instantmeshes-cli model.glb output.obj -f 10000
 
-# 三角面 / 六边面
+# Triangle / hex mesh
 ./instantmeshes-cli model.glb output.obj -f 3000 -r 6 -p 3
 
-# 保留硬边
+# Preserve sharp edges
 ./instantmeshes-cli model.ply output.obj -f 2000 -c 30
 ```
 
-## 🎛️ 全部参数
+## 🎛️ Options
 
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `-f, --faces` | 目标面数 | 自动 |
-| `-s, --scale` | 目标边长 | 自动 |
-| `-v, --vertices` | 目标顶点数 | 自动 |
-| `-r, --rosy` | 旋转对称性 `2` `4` `6` | `4` |
-| `-p, --posy` | 位置对称性 `3` `4` | `4` |
-| `-c, --crease` | 硬边角度阈值（度） | `-1` 自动 |
-| `-i, --intrinsic` | 内蕴模式 | 关闭 |
-| `-b, --boundaries` | 对齐边界 | 关闭 |
-| `-D, --dominant` | 非纯四边形输出 | 关闭 |
-| `-S, --smooth` | 平滑迭代次数 | `2` |
-| `-k, --knn` | 点云邻居数 | `10` |
-| `-d, --deterministic` | 确定性模式 | 关闭 |
-| `-t, --threads` | 线程数 | 自动 |
-| `-h, --help` | 帮助 | — |
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-f, --faces` | Target face count | auto |
+| `-s, --scale` | Target edge length | auto |
+| `-v, --vertices` | Target vertex count | auto |
+| `-r, --rosy` | Rotational symmetry `2` `4` `6` | `4` |
+| `-p, --posy` | Positional symmetry `3` `4` | `4` |
+| `-c, --crease` | Crease angle threshold (degrees) | `-1` auto |
+| `-i, --intrinsic` | Intrinsic mode | off |
+| `-b, --boundaries` | Align to boundaries | off |
+| `-D, --dominant` | Non-pure-quad output | off |
+| `-S, --smooth` | Smoothing iterations | `2` |
+| `-k, --knn` | Point-cloud neighbor count | `10` |
+| `-d, --deterministic` | Deterministic mode | off |
+| `-t, --threads` | Thread count | auto |
+| `-h, --help` | Show help | — |
 
-## 🛠️ 从源码编译
+## 🛠️ Build from Source
 
 ```bash
 git clone --recursive https://github.com/kigland/instant-meshes
 cd instant-meshes
 cmake -S . -B build
 cmake --build build -j$(sysctl -n hw.logicalcpu)
-# 二进制在: build/instantmeshes-cli
+# Binary at: build/instantmeshes-cli
 ```
 
-## 📚 算法简介
+## 📚 How It Works
 
-Instant Field-Aligned Meshes 是 ETH Zurich 发表的自动重拓扑算法。它在输入网格上计算两个场：
+The Instant Field-Aligned Meshes algorithm computes two smooth fields on the input surface:
 
-1. **方向场** (Orientation Field) — 决定四边形面的朝向，沿表面特征线对齐
-2. **位置场** (Position Field) — 决定顶点在参数网格上的精确位置
+1. **Orientation Field** (RoSy) — determines local edge directions, aligned to surface features
+2. **Position Field** (PoSy) — assigns each vertex a parametric (u, v) coordinate
 
-最后通过追踪场的等值线提取四边形网格。支持 4-RoSy（四边形）、6-RoSy（六边形/三角形）等对称类型。
+These fields are computed hierarchically (coarse-to-fine) and then traced to extract the output quad mesh. RoSy types: `4` = quads, `6` = triangles/hexagons, `2` = lines. PoSy types: `4` = quads, `3` = triangles.
 
-> 📄 **论文**: Wenzel Jakob, Marco Tarini, Daniele Panozzo, Olga Sorkine-Hornung. *Instant Field-Aligned Meshes*. ACM Transactions on Graphics (SIGGRAPH Asia 2015).  
+> 📄 **Paper**: Wenzel Jakob, Marco Tarini, Daniele Panozzo, Olga Sorkine-Hornung. *Instant Field-Aligned Meshes*. ACM Trans. Graph. (SIGGRAPH Asia 2015).  
 > [PDF](http://igl.ethz.ch/projects/instant-meshes/instant-meshes-SA-2015-jakob-et-al.pdf) · [Video](https://www.youtube.com/watch?v=U6wtw6W4x3I)
 
-## 💝 致谢
+## 💝 Credits
 
-本项目基于 [wjakob/instant-meshes](https://github.com/wjakob/instant-meshes) 的核心算法。
-- GLB/glTF 支持由 [cgltf](https://github.com/jkuhlmann/cgltf) 提供
-- 并行计算由 [Intel TBB](https://github.com/oneapi-src/oneTBB) 支持
-- 线性代数由 [Eigen](https://eigen.tuxfamily.org/) 提供
+Based on the core algorithm from [wjakob/instant-meshes](https://github.com/wjakob/instant-meshes).
+- GLB/glTF via [cgltf](https://github.com/jkuhlmann/cgltf)
+- Parallelism via [Intel TBB](https://github.com/oneapi-src/oneTBB)
+- Linear algebra via [Eigen](https://eigen.tuxfamily.org/)
