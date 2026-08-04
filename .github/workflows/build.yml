@@ -35,7 +35,7 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq libtbb-dev
 
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ${{ matrix.cmake_extra }}
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM="3.5" ${{ matrix.cmake_extra }}
 
       - name: Build
         run: cmake --build build --target instantmeshes-cli --config Release -j ${{ runner.os == 'Windows' && '' || '$(nproc)' }}
