@@ -97,9 +97,13 @@ endif()
 
 if(APPLE)
   target_link_libraries(instantmeshes_core PUBLIC "-framework Foundation")
-  target_compile_options(instantmeshes_core PRIVATE
-    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wno-int-in-bool-context -Wno-deprecated-copy -Wno-unused-parameter -Wno-gnu-anonymous-struct -Wno-c99-extensions -Wno-nested-anon-types>
-  )
+  if(NOT MSVC)
+    target_compile_options(instantmeshes_core PRIVATE
+      -Wno-int-in-bool-context -Wno-deprecated-copy
+      -Wno-unused-parameter -Wno-gnu-anonymous-struct
+      -Wno-c99-extensions -Wno-nested-anon-types
+    )
+  endif()
 endif()
 
 # ---- CLI Tool ----
@@ -108,9 +112,13 @@ add_executable(instantmeshes-cli src/cli/main.cpp)
 target_include_directories(instantmeshes-cli PRIVATE ${CORE_INCLUDES})
 target_link_libraries(instantmeshes-cli PRIVATE instantmeshes_core ${TBB_LIB})
 target_compile_definitions(instantmeshes-cli PRIVATE __TBB_NO_IMPLICIT_LINKAGE)
-target_compile_options(instantmeshes-cli PRIVATE
-  $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wno-deprecated-declarations -Wno-int-in-bool-context -Wno-deprecated-copy -Wno-unused-parameter>
-)
+target_compile_options(instantmeshes-cli PRIVATE)
+if(NOT MSVC)
+  target_compile_options(instantmeshes-cli PRIVATE
+    -Wno-deprecated-declarations -Wno-int-in-bool-context
+    -Wno-deprecated-copy -Wno-unused-parameter
+  )
+endif()
 
 if(APPLE)
   target_link_libraries(instantmeshes-cli PRIVATE "-framework Foundation")
