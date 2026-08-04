@@ -1,5 +1,8 @@
 import bpy
 from bpy.types import Panel
+from bpy.props import (
+    EnumProperty, IntProperty, FloatProperty, BoolProperty,
+)
 
 
 class IM_PT_Main(Panel):
