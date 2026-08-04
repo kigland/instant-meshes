@@ -38,6 +38,7 @@ static void print_usage(const char *prog) {
     printf("  -S, --smooth <int>       Smoothing iterations (default: 2)\n");
     printf("  -d, --deterministic      Deterministic mode\n");
     printf("  -t, --threads <int>      Thread count (default: auto)\n");
+    printf("  -k, --knn <int>          Point cloud neighbor count (default: 10)\n");
     printf("  -h, --help               Show this help\n");
 }
 
@@ -231,6 +232,9 @@ int main(int argc, char **argv) {
         } else if (!strcmp(argv[i], "-t") || !strcmp(argv[i], "--threads")) {
             if (++i >= argc) { fprintf(stderr, "Missing thread count\n"); return 1; }
             nprocs = atoi(argv[i]);
+        } else if (!strcmp(argv[i], "-k") || !strcmp(argv[i], "--knn")) {
+            if (++i >= argc) { fprintf(stderr, "Missing knn value\n"); return 1; }
+            knn_points = atoi(argv[i]);
         } else if (argv[i][0] == '-') {
             fprintf(stderr, "Unknown option: %s\n", argv[i]);
             return 1;

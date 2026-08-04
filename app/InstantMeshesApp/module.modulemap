@@ -1,4 +1,0 @@
-module MeshEngine [system] {
-    header "MeshEngineCAPI.h"
-    export *
-}

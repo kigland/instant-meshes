@@ -20,4 +20,5 @@ datasets
 *.vcxproj
 *.filters
 *.sdf
-*.sln
+*.slnext/eigen/
+build/
