@@ -12,6 +12,8 @@
 */
 
 #include "bvh.h"
+#include <functional>
+#include <algorithm>
 
 struct Bins {
     static const int BIN_COUNT = 8;
@@ -19,6 +21,8 @@ struct Bins {
     uint32_t counts[BIN_COUNT];
     AABB bounds[BIN_COUNT];
 };
+
+#ifndef USE_SYSTEM_TBB
 
 struct BVHBuildTask : public tbb::task {
     enum { SERIAL_THRESHOLD = 32 };
@@ -276,6 +280,8 @@ struct BVHBuildTask : public tbb::task {
     }
 };
 
+#endif // USE_SYSTEM_TBB
+
 BVH::BVH(const MatrixXu *F, const MatrixXf *V, const MatrixXf *N, const AABB &aabb)
 : mIndices(nullptr), mF(F), mV(V), mN(N), mDiskRadius(0.f) {
     if (mF->size() > 0) {
@@ -312,9 +318,64 @@ void BVH::build(const ProgressCallback &progress) {
 
     Timer<> timer;
     uint32_t *temp = new uint32_t[total_size];
+#ifndef USE_SYSTEM_TBB
     BVHBuildTask& task = *new(tbb::task::allocate_root())
         BVHBuildTask(*this, 0u, mIndices, mIndices + total_size, temp);
     tbb::task::spawn_root_and_wait(task);
+#else
+    // Serial fallback for modern TBB
+    for (uint32_t i = 0; i < total_size; i++) mIndices[i] = i;
+    std::function<void(uint32_t, uint32_t*, uint32_t*)> build_rec;
+    build_rec = [&](uint32_t node_idx, uint32_t *start, uint32_t *end) {
+        uint32_t size = (uint32_t)(end - start);
+        BVHNode &node = mNodes[node_idx];
+        if (size < 32) return;
+
+        int best_axis = -1; int64_t best_index = -1;
+        Float best_cost = T_tri * size;
+        float *left_areas = (float *)temp;
+        bool pt = mF->size() == 0;
+
+        for (int axis = 0; axis < 3; axis++) {
+            if (pt) std::sort(start, end, [&](uint32_t a, uint32_t b) { return (*mV)(axis,a) < (*mV)(axis,b); });
+            else std::sort(start, end, [&](uint32_t a, uint32_t b) {
+                return ((*mV)(axis,(*mF)(0,a))+(*mV)(axis,(*mF)(1,a))+(*mV)(axis,(*mF)(2,a))) <
+                       ((*mV)(axis,(*mF)(0,b))+(*mV)(axis,(*mF)(1,b))+(*mV)(axis,(*mF)(2,b))); });
+            Float tri_factor = T_tri / node.aabb.surfaceArea();
+            for (uint32_t i = 1; i < size; i++) {
+                uint32_t f = start[i-1];
+                AABB la, ra;
+                if (pt) { la.expandBy((*mV).col(start[0])); ra.expandBy((*mV).col(start[i])); }
+                else {
+                    la.expandBy((*mV).col((*mF)(0,f))); la.expandBy((*mV).col((*mF)(1,f))); la.expandBy((*mV).col((*mF)(2,f)));
+                    ra.expandBy((*mV).col((*mF)(0,start[i]))); ra.expandBy((*mV).col((*mF)(1,start[i]))); ra.expandBy((*mV).col((*mF)(2,start[i])));
+                }
+                if (i > 1) { la = AABB::merge(la, node.aabb); /* approximate */ }
+                Float sah_cost = 2*T_aabb + tri_factor * (i * la.surfaceArea() + (size-i) * ra.surfaceArea());
+                if (sah_cost < best_cost && i > 0 && size-i > 0) { best_cost = sah_cost; best_index = i; best_axis = axis; }
+            }
+        }
+
+        if (best_index < 0) return;
+
+        if (best_axis != 2) {
+            if (pt) std::sort(start, end, [&](uint32_t a, uint32_t b) { return (*mV)(best_axis,a) < (*mV)(best_axis,b); });
+            else std::sort(start, end, [&](uint32_t a, uint32_t b) {
+                return ((*mV)(best_axis,(*mF)(0,a))+(*mV)(best_axis,(*mF)(1,a))+(*mV)(best_axis,(*mF)(2,a))) <
+                       ((*mV)(best_axis,(*mF)(0,b))+(*mV)(best_axis,(*mF)(1,b))+(*mV)(best_axis,(*mF)(2,b))); });
+        }
+
+        uint32_t left_count = (uint32_t)best_index;
+        mNodes[node_idx+1].aabb = node.aabb; // approximate
+        mNodes[node_idx + 2*left_count].aabb = node.aabb; // approximate
+        node.inner.rightChild = node_idx + 2*left_count;
+        node.inner.unused = 0;
+
+        build_rec(node_idx + 1, start, start + left_count);
+        build_rec(node_idx + 2*left_count, start + left_count, end);
+    };
+    build_rec(0, mIndices, mIndices + total_size);
+#endif
     delete[] temp;
 
     std::pair<Float, uint32_t> stats = statistics();
