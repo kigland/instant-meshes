@@ -1,0 +1,134 @@
+cmake_minimum_required(VERSION 3.14)
+project(InstantMeshesCore LANGUAGES C CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+option(INSTANT_MESHES_BUILD_OLD_GUI "Build the old NanoGUI-based GUI (requires nanogui submodule)" OFF)
+
+# --- Platform-specific flags ---
+if(APPLE)
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0" CACHE STRING "Minimum macOS deployment target")
+endif()
+
+# --- Include paths ---
+set(CORE_INCLUDE_DIRS
+  ${CMAKE_CURRENT_SOURCE_DIR}/src
+  ${CMAKE_CURRENT_SOURCE_DIR}/ext/dset
+  ${CMAKE_CURRENT_SOURCE_DIR}/ext/half
+  ${CMAKE_CURRENT_SOURCE_DIR}/ext/pcg32
+  ${CMAKE_CURRENT_SOURCE_DIR}/ext/pss
+  ${CMAKE_CURRENT_SOURCE_DIR}/ext/rply
+  ${CMAKE_CURRENT_SOURCE_DIR}/ext/nanogui/ext/eigen
+)
+
+# --- Check for TBB (Intel Threading Building Blocks) ---
+find_package(TBB QUIET)
+if(NOT TBB_FOUND)
+  message(STATUS "System TBB not found, building bundled TBB...")
+  set(TBB_BUILD_STATIC ON CACHE BOOL " " FORCE)
+  set(TBB_BUILD_SHARED OFF CACHE BOOL " " FORCE)
+  set(TBB_BUILD_TBBMALLOC OFF CACHE BOOL " " FORCE)
+  set(TBB_BUILD_TBBMALLOC_PROXY OFF CACHE BOOL " " FORCE)
+  set(TBB_BUILD_TESTS OFF CACHE BOOL " " FORCE)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ext/tbb ext_build/tbb EXCLUDE_FROM_ALL)
+  list(APPEND CORE_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/tbb/include)
+  set(TBB_LIB tbb_static)
+else()
+  list(APPEND CORE_INCLUDE_DIRS ${TBB_INCLUDE_DIRS})
+  set(TBB_LIB TBB::tbb)
+endif()
+
+# --- RPLY mesh I/O (C99, built as part of the lib) ---
+set(RPLY_SRC ${CMAKE_CURRENT_SOURCE_DIR}/ext/rply/rply.c)
+set_source_files_properties(${RPLY_SRC} PROPERTIES LANGUAGE C)
+if(MSVC)
+  set_source_files_properties(${RPLY_SRC} PROPERTIES COMPILE_FLAGS "/wd4127")
+endif()
+
+# --- Algorithm source files ---
+set(CORE_SOURCES
+  # Core data structures
+  src/adjacency.cpp
+  src/hierarchy.cpp
+
+  # Field optimization
+  src/field.cpp
+
+  # Mesh extraction
+  src/extract.cpp
+
+  # Mesh I/O
+  src/meshio.cpp
+
+  # Mesh statistics
+  src/meshstats.cpp
+
+  # Normal computation
+  src/normal.cpp
+
+  # Subdivision
+  src/subdivide.cpp
+
+  # Directed edges
+  src/dedge.cpp
+
+  # BVH
+  src/bvh.cpp
+
+  # Reordering
+  src/reorder.cpp
+
+  # Smooth curve
+  src/smoothcurve.cpp
+
+  # Cleanup
+  src/cleanup.cpp
+
+  # Serialization
+  src/serializer.cpp
+
+  # RPLY (C source)
+  ${RPLY_SRC}
+)
+
+# --- Static library ---
+add_library(instantmeshes_core STATIC ${CORE_SOURCES})
+target_include_directories(instantmeshes_core PUBLIC ${CORE_INCLUDE_DIRS})
+target_link_libraries(instantmeshes_core PUBLIC ${TBB_LIB})
+
+if(APPLE)
+  target_link_libraries(instantmeshes_core PUBLIC
+    "-framework Foundation"
+  )
+endif()
+
+# --- Compiler warnings ---
+if(MSVC)
+  target_compile_options(instantmeshes_core PRIVATE /W3 /wd4244 /wd4267)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+  target_compile_options(instantmeshes_core PRIVATE -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-copy)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(instantmeshes_core PRIVATE
+      -Wno-gnu-anonymous-struct -Wno-c99-extensions -Wno-nested-anon-types
+      -Wno-int-in-bool-context
+    )
+  endif()
+endif()
+
+# --- Optional: Old GUI (requires nanogui submodule) ---
+if(INSTANT_MESHES_BUILD_OLD_GUI)
+  if(NOT IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/ext/nanogui/ext/glfw")
+    message(FATAL_ERROR "NanoGUI submodules not initialized. Run: git submodule update --init --recursive")
+  endif()
+  # ... old GUI build (omitted for brevity, already exists in old CMakeLists.txt)
+endif()
+
+# --- Install ---
+install(TARGETS instantmeshes_core ARCHIVE DESTINATION lib)
+install(DIRECTORY src/ DESTINATION include/instantmeshes
+  FILES_MATCHING PATTERN "*.h"
+  PATTERN "widgets.h" EXCLUDE
+  PATTERN "glutil.h" EXCLUDE
+  PATTERN "viewer.h" EXCLUDE
+)

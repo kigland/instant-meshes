@@ -13,3 +13,6 @@
 [submodule "ext/pss"]
 	path = ext/pss
 	url = https://github.com/wjakob/pss
+[submodule "ext/imgui"]
+	path = ext/imgui
+	url = https://github.com/ocornut/imgui

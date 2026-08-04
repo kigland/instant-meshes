@@ -198,3 +198,133 @@ endif()
 if (UNIX AND NOT ${U_CMAKE_BUILD_TYPE} MATCHES DEBUG)
   add_custom_command(TARGET InstantMeshes POST_BUILD COMMAND strip $<TARGET_FILE:InstantMeshes>)
 endif()
+
+# ============================================================
+# InstantMeshesCore -- standalone algorithm static library
+# (no NanoGUI dependency, suitable for embedding in new apps)
+# ============================================================
+
+set(CORE_SOURCES
+  src/adjacency.cpp
+  src/hierarchy.cpp
+  src/field.cpp
+  src/extract.cpp
+  src/meshio.cpp
+  src/meshstats.cpp
+  src/normal.cpp
+  src/subdivide.cpp
+  src/dedge.cpp
+  src/bvh.cpp
+  src/reorder.cpp
+  src/smoothcurve.cpp
+  src/cleanup.cpp
+  src/serializer.cpp
+  ext/rply/rply.c
+)
+
+set(CORE_INCLUDE_DIRS
+  ${CMAKE_CURRENT_SOURCE_DIR}/src
+  ${CMAKE_CURRENT_SOURCE_DIR}/ext/dset
+  ${CMAKE_CURRENT_SOURCE_DIR}/ext/half
+  ${CMAKE_CURRENT_SOURCE_DIR}/ext/pcg32
+  ${CMAKE_CURRENT_SOURCE_DIR}/ext/pss
+  ${CMAKE_CURRENT_SOURCE_DIR}/ext/rply
+  ${CMAKE_CURRENT_SOURCE_DIR}/ext/nanogui/ext/eigen
+  ${CMAKE_CURRENT_SOURCE_DIR}/ext/tbb/include
+)
+
+add_library(instantmeshes_core STATIC ${CORE_SOURCES})
+target_include_directories(instantmeshes_core PUBLIC ${CORE_INCLUDE_DIRS})
+target_link_libraries(instantmeshes_core PUBLIC tbb_static)
+set_target_properties(instantmeshes_core PROPERTIES OUTPUT_NAME instantmeshes_core)
+
+target_compile_definitions(instantmeshes_core PUBLIC
+  _LIBCPP_ENABLE_CXX17_REMOVED_FEATURES
+  __TBB_NO_IMPLICIT_LINKAGE
+)
+
+if(APPLE)
+  target_link_libraries(instantmeshes_core PUBLIC "-framework Foundation")
+  target_compile_options(instantmeshes_core PRIVATE
+    -Wno-int-in-bool-context
+    -Wno-deprecated-copy
+    -Wno-unused-parameter
+    -Wno-gnu-anonymous-struct
+    -Wno-c99-extensions
+    -Wno-nested-anon-types
+  )
+endif()
+
+# ============================================================
+# ImGui-based App — modern replacement for the old NanoGUI app
+# ============================================================
+
+# ImGui
+set(IMGUI_SOURCES
+  ext/imgui/imgui.cpp
+  ext/imgui/imgui_draw.cpp
+  ext/imgui/imgui_tables.cpp
+  ext/imgui/imgui_widgets.cpp
+  ext/imgui/imgui_demo.cpp
+  ext/imgui/backends/imgui_impl_glfw.cpp
+  ext/imgui/backends/imgui_impl_opengl3.cpp
+)
+
+add_library(imgui STATIC ${IMGUI_SOURCES})
+target_include_directories(imgui PUBLIC
+  ext/imgui
+  ext/imgui/backends
+  ext/nanogui/ext/glfw/include
+)
+target_link_libraries(imgui PUBLIC glfw)
+
+# ImGui App sources
+set(IMGUI_APP_SOURCES
+  src/imgui_app/main.cpp
+  src/imgui_app/renderer.cpp
+  src/imgui_app/nativefiledialog.cpp
+)
+
+add_executable(InstantMeshesImgui MACOSX_BUNDLE ${IMGUI_APP_SOURCES})
+target_include_directories(InstantMeshesImgui PRIVATE
+  ${CORE_INCLUDE_DIRS}
+  ext/imgui
+  ext/imgui/backends
+  ext/nanogui/ext/glfw/include
+  src/imgui_app
+)
+target_link_libraries(InstantMeshesImgui
+  instantmeshes_core
+  imgui
+  glfw
+  tbb_static
+)
+target_link_libraries(InstantMeshesImgui
+  "-framework Cocoa"
+  "-framework OpenGL"
+  "-framework IOKit"
+  "-framework CoreVideo"
+  "-framework UniformTypeIdentifiers"
+)
+target_compile_definitions(InstantMeshesImgui PRIVATE
+  __TBB_NO_IMPLICIT_LINKAGE
+)
+target_compile_options(InstantMeshesImgui PRIVATE
+  -Wno-deprecated-declarations
+  -Wno-int-in-bool-context
+  -Wno-deprecated-copy
+  -Wno-unused-parameter
+)
+
+set_target_properties(InstantMeshesImgui PROPERTIES
+  OUTPUT_NAME "Instant Meshes"
+  MACOSX_BUNDLE_BUNDLE_NAME "Instant Meshes"
+  MACOSX_BUNDLE_BUNDLE_GUI_IDENTIFIER "com.kigland.instantmeshes"
+  MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/resources/MacOSXBundleInfo.plist.in
+  CXX_STANDARD 14
+)
+
+# Bundle resources
+set_target_properties(InstantMeshesImgui PROPERTIES
+  RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/im.icns"
+)
