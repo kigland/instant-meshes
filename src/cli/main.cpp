@@ -184,7 +184,11 @@ static bool load_glb(const char *path, MatrixXu &F, MatrixXf &V, MatrixXf &N) {
 static bool is_gltf(const char *path) {
     const char *ext = strrchr(path, '.');
     if (!ext) return false;
+#ifdef _WIN32
+    return _stricmp(ext, ".glb") == 0 || _stricmp(ext, ".gltf") == 0;
+#else
     return strcasecmp(ext, ".glb") == 0 || strcasecmp(ext, ".gltf") == 0;
+#endif
 }
 
 int main(int argc, char **argv) {
